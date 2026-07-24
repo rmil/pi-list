@@ -1,6 +1,7 @@
 FROM ebutech/pi-list
 
 # Fix: -map_channel was removed in ffmpeg 5.x.
-# Patch the compiled JS files with the filter_complex pan equivalent.
-COPY apps/listwebserver/src/api/pcap.js /app/listwebserver/dist/api/pcap.js
-COPY apps/listwebserver/src/analyzers/crossCorrelation.js /app/listwebserver/dist/analyzers/crossCorrelation.js
+# Replace with -filter_complex pan equivalent in the compiled dist files.
+COPY docker/patch-pcap.js /tmp/patch-pcap.js
+COPY docker/patch-crossCorrelation.js /tmp/patch-crossCorrelation.js
+RUN node /tmp/patch-pcap.js && node /tmp/patch-crossCorrelation.js
