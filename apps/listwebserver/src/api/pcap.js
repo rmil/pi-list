@@ -864,15 +864,14 @@ function renderMp3(req, res) {
             const encodingBits = data.media_specific.encoding == 'L24' ? 24 : 16;
             const sampling = parseInt(data.media_specific.sampling) / 1000;
             const channelNumber = data.media_specific.number_channels;
-            // ffmpeg supports up to 16 input channels
-            const channelMapping = channels
-                .split(',')
-                .slice(0, 16)
-                .map(function (i) {
-                    return '-map_channel 0.0.' + i;
-                })
-                .join(' ');
-            const ffmpegCommand = `ffmpeg -hide_banner -y -f s${encodingBits}be -ar ${sampling}k -ac ${channelNumber} -i "${rawFilePath}" ${channelMapping} -codec:a libmp3lame -qscale:a 2 "${mp3FilePath}"`;
+             // ffmpeg supports up to 16 input channels
+             // Note: -map_channel was removed in ffmpeg 5.x, use -filter_complex pan instead
+             const selectedChannels = channels.split(',').slice(0, 16);
+             const outChannelCount = selectedChannels.length;
+             const channelLayout = outChannelCount === 1 ? 'mono' : `${outChannelCount}c`;
+             const panMapping = selectedChannels.map((i, idx) => `c${idx}=c${i}`).join('|');
+             const channelMapping = `-filter_complex "[0:a]pan=${channelLayout}|${panMapping}[out]" -map "[out]"`;
+             const ffmpegCommand = `ffmpeg -hide_banner -y -f s${encodingBits}be -ar ${sampling}k -ac ${channelNumber} -i "${rawFilePath}" ${channelMapping} -codec:a libmp3lame -qscale:a 2 "${mp3FilePath}"`;
 
             logger('render-mp3').info(`Command: ${ffmpegCommand}`);
             exec(ffmpegCommand)
